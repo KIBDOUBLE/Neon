@@ -1,5 +1,5 @@
-from function import Function
-from variable.variable import Variable
+from variables.function import Function
+from variables.variable import Variable
 from enums.variable_object_type import VariableObjectType
 
 

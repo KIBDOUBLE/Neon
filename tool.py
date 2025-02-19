@@ -1,4 +1,4 @@
-from types.line_list import LineList
+from new_types.line_list import LineList
 from variables.variable_object import VariableObject
 from enums import variable_object_type
 

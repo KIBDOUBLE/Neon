@@ -1,5 +1,5 @@
 from tool import is_in, assign_variable_object_type
-from variable.variable_object import VariableObject
+from variables.variable_object import VariableObject
 
 
 class Variables:

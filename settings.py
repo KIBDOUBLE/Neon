@@ -1,4 +1,4 @@
-from types.config import Config
+from new_types.config import Config
 
 CONFIG = Config()
 

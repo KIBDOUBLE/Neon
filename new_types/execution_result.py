@@ -1,4 +1,4 @@
-from command import Command
+from new_types.command import Command
 from variables.variables import Variables
 
 

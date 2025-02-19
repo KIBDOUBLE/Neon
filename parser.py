@@ -1,10 +1,10 @@
 import colorama
 
-from types import line_list
-from types.command import Command
-from types.execution_result import ExecutionResult
+from new_types import line_list
+from new_types.command import Command
+from new_types.execution_result import ExecutionResult
 from variables.function import Function
-from types.line_list import LineList
+from new_types.line_list import LineList
 from tool import get_in, tab_clear
 from variables.variable import Variable
 from variables.variable_object import VariableObject

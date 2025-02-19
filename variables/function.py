@@ -1,4 +1,4 @@
-from line_list import LineList
+from types.line_list import LineList
 
 
 class Function:

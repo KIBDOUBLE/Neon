@@ -1,10 +1,10 @@
 from function import Function
-from variable import Variable
-from variable_object_type import VariableObjectType
+from variable.variable import Variable
+from enums.variable_object_type import VariableObjectType
 
 
 class VariableObject:
-    slots = ["variable", "__type"]
+    slots = ["variables", "__type"]
     def __init__(self, variable, type: VariableObjectType):
         self.variable = variable
         self.__type = type

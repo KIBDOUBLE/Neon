@@ -1,15 +1,27 @@
-from string_operations import is_in
-from variable_object import VariableObject
-from variable_object_type import VariableObjectType
+from tool import is_in, assign_variable_object_type
+from variable.variable_object import VariableObject
 
 
 class Variables:
-    slots = ["__variables"]
-    def __init__(self):
+    slots = ["__variables", "__number"]
+    def __init__(self, number = 0):
         self.__variables = []
+        self.__number = number
 
     @property
     def variables(self) -> None: return None
+
+    @property
+    def context(self) -> str:
+        result = ""
+        for variable_obj in self.__variables:
+            variable_obj: VariableObject
+            name = variable_obj.get_variable_name()
+            result += f"{name}:{assign_variable_object_type(variable_obj)}, "
+        return result
+
+    @property
+    def number(self) -> int: return self.__number
 
     def append(self, variable: VariableObject) -> None:
         for variable2 in self.__variables:

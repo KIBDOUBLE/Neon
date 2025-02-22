@@ -1,10 +1,6 @@
-log "Calculator"
-var a <- input "Enter first number: "
-var b <- input "Enter second number: "
-var op <- input "Enter operation: "
+load packages/test
+load packages/system_package
 
-function aopb <- (a,op,b)
-    return @a op b
-end
+log lol
 
-log @"Result: " + aopb -> (a,op,b)
+log get_env

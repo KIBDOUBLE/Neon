@@ -1,4 +1,3 @@
-import tool
 from new_types.command import Command
 from variables.variables import Variables
 
@@ -30,7 +29,8 @@ class ExecutionResult:
         command = 0
         command_value = 0
 
-        data = tool.get_in(string)
+        from tool import get_in
+        data = get_in(string)
         for cell in data.lines:
             cell: str
             if cell.startswith("result:"): result = cell[7:]

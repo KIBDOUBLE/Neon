@@ -1,4 +1,3 @@
-from tool import is_in, assign_variable_object_type
 from variables.variable_object import VariableObject
 
 
@@ -13,6 +12,7 @@ class Variables:
 
     @property
     def context(self) -> str:
+        from tool import assign_variable_object_type
         result = ""
         for variable_obj in self.__variables:
             variable_obj: VariableObject
@@ -22,6 +22,8 @@ class Variables:
 
     @property
     def number(self) -> int: return self.__number
+
+    def flush(self) -> None: self.__variables = []
 
     def append(self, variable: VariableObject) -> None:
         for variable2 in self.__variables:
@@ -38,6 +40,14 @@ class Variables:
                 return variable
         return VariableObject.get_empty()
 
+    def get_packages(self) -> list:
+        packages = []
+        for variable in self.__variables:
+            variable: VariableObject
+            package = variable.get_if_package()
+            if package: packages.append(package)
+        return packages
+
     def get_python_pattern(self):
         code = ""
         for variableObj in self.__variables:
@@ -48,6 +58,7 @@ class Variables:
         return code
 
     def is_variable(self, data: str) -> bool:
+        from tool import is_in
         if is_in(data, "\""): return False
         elif not self.get(data).is_empty(): return True
         return False

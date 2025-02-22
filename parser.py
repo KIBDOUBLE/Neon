@@ -9,9 +9,11 @@ from enums.variable_type import VariableType
 from new_types import line_list
 from new_types.command import Command
 from new_types.execution_result import ExecutionResult
+from new_types.package_result import PackageResult
 from variables.function import Function
 from new_types.line_list import LineList
 from tool import get_in, tab_clear
+from variables.package import Package
 from variables.variable import Variable
 from variables.variable_object import VariableObject
 from enums.variable_object_type import VariableObjectType
@@ -68,7 +70,7 @@ class Parser:
 
     @classmethod
     def call_function(cls, function: Function, args: LineList, current_context: Variables, line_index: int, code: LineList) -> ExecutionResult:
-        context = Variables(1)
+        context = Variables(current_context.number+1)
         for i in range(args.length):
             arg_name = function.req_args.get_line(i)
             if CONFIG.debug and not CONFIG.only_return_results: print(f"New var in function: {arg_name}!")
@@ -79,8 +81,9 @@ class Parser:
         return result
 
     @classmethod
-    def execute_line(cls, line: str, context: Variables, line_index: int, code: LineList) -> ExecutionResult:
+    def execute_line(cls, line: str, context: Variables, line_index: int, code: LineList, ignore_dot=False) -> ExecutionResult:
         v = line.split()
+
         result = ""
         command = 0
         command_value = None
@@ -89,8 +92,8 @@ class Parser:
             if CONFIG.explain_mode:
                 print(explain)
 
-        def execute_here(line: str) -> ExecutionResult:
-            return cls.execute_line(line, context, line_index, code)
+        def execute_here(line: str, ignore_dot=False) -> ExecutionResult:
+            return cls.execute_line(line, context, line_index, code, ignore_dot)
 
         def arg_at_is(index: int, value: str, in_v: bool=True) -> bool:
             if index >= len(v) or index >= len(line): return False
@@ -233,6 +236,10 @@ class Parser:
             explain_code(f"В строке '{line}' интерпретатор ожидает ввод пользователя")
             result = input(message)
 
+        elif arg_at_is(0, "load"):
+            path = line[5:]
+            context.append(VariableObject(Package(path), VariableObjectType.Package))
+
 
         # Variables and functions operations
         elif context.is_variable(v[0]):
@@ -348,8 +355,20 @@ class Parser:
         elif Variable.get_type(line) == VariableType.String:
             result = tool.open_string(line)
         else:
-            result = line
-            explain_code(f"В строке '{line}' интерпретатор возвращает эту строку без изменений")
+            packages_result = PackageResult(ExecutionResult("", context, Command(0)), False)
+            for package in context.get_packages():
+                package: Package
+                packages_result = package.invoke([line, context, line_index, code])
+                if packages_result.result: break
+
+            if not packages_result.result:
+                result = line
+                explain_code(f"В строке '{line}' интерпретатор возвращает эту строку без изменений")
+            else:
+                result = packages_result.execution_result.result
+                context = packages_result.execution_result.variables
+                command = packages_result.execution_result.command.command
+                command_value = packages_result.execution_result.command.s_value
 
         execution_result = ExecutionResult(result, context, Command(command, command_value))
         if CONFIG.debug or (CONFIG.debug and CONFIG.only_return_results): print(f"<execute_line> ({line_index}) context:{context.number} -> line={line} ; result={execution_result} ; \n     full context:\n{context.context}\n\n")

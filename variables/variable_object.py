@@ -1,4 +1,5 @@
 from variables.function import Function
+from variables.package import Package
 from variables.variable import Variable
 from enums.variable_object_type import VariableObjectType
 
@@ -33,6 +34,10 @@ class VariableObject:
 
     def get_if_function(self) -> Function:
         if self.type_is(VariableObjectType.Function):
+            return self.variable
+
+    def get_if_package(self) -> Package:
+        if self.type_is(VariableObjectType.Package):
             return self.variable
 
     def is_empty(self) -> bool: return (self.variable is None) and (self.type_is(VariableObjectType.Empty))

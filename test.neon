@@ -1,6 +1,6 @@
-load packages/test
-load packages/system_package
+load packages/file
 
-log lol
+log file.read test.neon
 
-log get_env
+var data <- "lololololololol"
+file.write lol.txt data

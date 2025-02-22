@@ -358,7 +358,7 @@ class Parser:
             packages_result = PackageResult(ExecutionResult("", context, Command(0)), False)
             for package in context.get_packages():
                 package: Package
-                packages_result = package.invoke([line, context, line_index, code])
+                packages_result = package.invoke([cls, line, context, line_index, code])
                 if packages_result.result: break
 
             if not packages_result.result:

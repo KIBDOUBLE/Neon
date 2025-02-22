@@ -18,13 +18,14 @@ class Package:
     def name(self) -> str: return self.__name
 
     def invoke(self, args: list) -> PackageResult:
-        line = args[0]
-        context = args[1]
-        line_index = args[2]
-        code = args[3]
+        cls = args[0]
+        line = args[1]
+        context = args[2]
+        line_index = args[3]
+        code = args[4]
         namespace = {}
         exec(self.__body, namespace)
 
         if "get" in namespace:
-            result = namespace["get"](line, context, line_index, code)
+            result = namespace["get"](cls, line, context, line_index, code)
             return result

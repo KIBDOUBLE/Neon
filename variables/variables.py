@@ -17,7 +17,7 @@ class Variables:
         for variable_obj in self.__variables:
             variable_obj: VariableObject
             name = variable_obj.get_variable_name()
-            result += f"{name}:{assign_variable_object_type(variable_obj)}, "
+            result += f"{name}:{assign_variable_object_type(variable_obj).name};"
         return result
 
     @property

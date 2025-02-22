@@ -1,3 +1,4 @@
+import tool
 from new_types.command import Command
 from variables.variables import Variables
 
@@ -19,5 +20,26 @@ class ExecutionResult:
 
     @property
     def variables(self) -> Variables: return self.__variables
+
+    @staticmethod
+    def is_execution_result(string: str) -> bool: return str(string).startswith("(result:") and ", CN" in str(string)
+
+    @classmethod
+    def restore(cls, string: str):
+        result = ""
+        command = 0
+        command_value = 0
+
+        data = tool.get_in(string)
+        for cell in data.lines:
+            cell: str
+            if cell.startswith("result:"): result = cell[7:]
+            elif cell.startswith("command:"):
+                data1 = cell[8:].split(":")
+                command = int(data1[0])
+                command_value = int(data1[1])
+
+        return ExecutionResult(result, Variables(2), Command(command, command_value))
+
 
     def __str__(self) -> str: return f"(result:{self.__result}, CN:{self.__variables.number}, command:{self.__reader_command})"

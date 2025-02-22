@@ -1,15 +1,10 @@
-var a <- "123"
-log a
-a <- "321"
-log a
-log ~3**2+4**2
+log "Calculator"
+var a <- input "Enter first number: "
+var b <- input "Enter second number: "
+var op <- input "Enter operation: "
 
-var x <- 1
-
-function test <- (a)
-    log a
+function aopb <- (a,op,b)
+    return @a op b
 end
 
-test -> (a)
-
-log a
+log @"Result: " + aopb -> (a,op,b)

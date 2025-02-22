@@ -1,4 +1,5 @@
 import tool
+from enums.operators import Operators
 from enums.variable_type import VariableType
 
 
@@ -26,7 +27,12 @@ class Variable:
             return VariableType.Boolean
         elif value.isdigit():
             return VariableType.Integer
+        elif value in Operators.all():
+            return VariableType.Operator
         return VariableType.Unknown
+
+    @property
+    def state(self) -> bool: return tool.string_to_bool(self.value)
 
     def edit_value(self, new_value: str) -> None:
         self.value = new_value

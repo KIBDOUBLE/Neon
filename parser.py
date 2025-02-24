@@ -109,7 +109,7 @@ class Parser:
 
         # Python operator
         if arg_at_is(0, Operators.Python.get(), False):
-            try: result = eval(line[1:])
+            try: result = eval(execute_here(line[1:]).result)
             except NameError as ExceptionName: cls.drop_exception(str(ExceptionName))
 
         # Expression operator
@@ -238,7 +238,8 @@ class Parser:
 
         elif arg_at_is(0, "load"):
             path = line[5:]
-            context.append(VariableObject(Package(path), VariableObjectType.Package))
+            new_package = Package(path)
+            context.append(VariableObject(new_package, VariableObjectType.Package))
 
 
         # Variables and functions operations

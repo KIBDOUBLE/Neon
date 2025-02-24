@@ -1,5 +1,3 @@
-import os
-
 from new_types.command import Command
 from new_types.execution_result import ExecutionResult
 from new_types.line_list import LineList
@@ -16,16 +14,11 @@ def get(cls: Parser, line: str, context: Variables, line_index: int, code: LineL
     command = 0
     command_value = ""
 
-    if d[0] == "file":
-        next = d[1].split()[0]
-        path = v[1]
-        if next == "read":
-            result = open(path, 'r', encoding="utf-8").read()
-        elif next == "write":
-            open(path, 'w').write(cls.execute_line(line[len(v[0])+len(v[1])+2:], context, line_index, code).result)
-        elif next == "delete":
-            os.remove(path)
+    if len(d) <= 1: return PackageResult(ExecutionResult("", context, Command(0)), False)
 
+    if d[1] == "length":
+        data = cls.execute_line(d[0], context, line_index, code).result
+        result = f"{len(data)}"
     else:
         p_result = False
 

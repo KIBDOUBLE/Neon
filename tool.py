@@ -20,6 +20,7 @@ def tab_clear(string: str) -> str:
 def assign_variable_object_type(variable: variables.variable_object.VariableObject) -> variable_object_type.VariableObjectType:
     if variable.get_if_variable(): return variable_object_type.VariableObjectType.Variable
     elif variable.get_if_function(): return variable_object_type.VariableObjectType.Function
+    elif variable.get_if_package(): return variable_object_type.VariableObjectType.Package
     else: return variable_object_type.VariableObjectType.Empty
 
 def string_to_bool(string: str) -> bool: return string.strip() == "true"

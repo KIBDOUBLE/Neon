@@ -23,6 +23,9 @@ class VariableObject:
         elif self.type_is(VariableObjectType.Function):
             self.variable: Function
             return self.variable.name
+        elif self.type_is(VariableObjectType.Package):
+            self.variable: Package
+            return self.variable.name
         else:
             return "NONE"
 

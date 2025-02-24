@@ -28,4 +28,4 @@ class Command:
     @property
     def i_value(self) -> int: return int(self.__value__)
 
-    def __str__(self) -> str: return f"Reader Command -> {self.__command__}:{self.i_value if not self.__value__ is None else "None"}"
+    def __str__(self) -> str: return f"Reader Command -> {self.__command__}:{self.__value__}"

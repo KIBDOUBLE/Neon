@@ -1,6 +1,12 @@
-load packages/file
+load packages/dot
 
-log file.read test.neon
+var a <- 1
+var b <- 2
 
-var data <- "lololololololol"
-file.write lol.txt data
+function c <- (a)
+    return 1
+end
+
+~print(context.context)
+~context.flush()
+~print(context.context)

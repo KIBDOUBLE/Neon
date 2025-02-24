@@ -1,15 +1,15 @@
 import math
-from collections.abc import ValuesView
 
 import colorama
 
 import tool
 from enums.operators import Operators
-from enums.variable_type import VariableType
 from new_types import line_list
 from new_types.command import Command
 from new_types.execution_result import ExecutionResult
+from new_types.neon_type import NeonType
 from new_types.package_result import PackageResult
+from new_types.type_context import TypeContext
 from variables.function import Function
 from new_types.line_list import LineList
 from tool import get_in, tab_clear
@@ -23,24 +23,32 @@ from settings import CONFIG
 colorama.init()
 
 
-class Parser:
+class NeonParser:
     slots = ["code", "variables"]
     def __init__(self, code: str):
         self.code: LineList = line_list.create(code)
         self.variables = Variables(0)
+        self.types = TypeContext()
 
     def execute(self):
         if CONFIG.hello_message: print(f"Код {self.code.deep} был успешно запущен с входными аргументами {CONFIG.info()}\n")
-        self.__reader(self.code, self.variables)
+
+        self.types.register(NeonType("string", lambda value: tool.is_in(value, "\"")))
+        self.types.register(NeonType("boolean", lambda value: value == "false" or value == "true"))
+        self.types.register(NeonType("number", lambda value: value.isdigit()))
+        self.types.register(NeonType("operator", lambda value: value in Operators.all()))
+        self.types.register(NeonType("unknown", lambda value: False))
+
+        self.__reader(self.code, self.variables, self.types)
         self.drop_wait()
 
     @classmethod
-    def __reader(cls, code: LineList, context: Variables) -> ExecutionResult:
+    def __reader(cls, code: LineList, context: Variables, types: TypeContext) -> ExecutionResult:
         if CONFIG.debug and not CONFIG.only_return_results: print(f"<reader> context: {context.number} -> code={code.text}")
         req_skips = 0
         skips = 0
         current_line_index = 0
-        to_return = ExecutionResult("", context, Command(0))
+        to_return = ExecutionResult("", context, types, Command(0))
         for line in code.lines:
             line: str
             if skips < req_skips:
@@ -51,14 +59,14 @@ class Parser:
                 skips = 0
                 req_skips = 0
 
-            result = cls.execute_line(tab_clear(line), context, current_line_index, code)
+            result = cls.execute_line(tab_clear(line), context, current_line_index, code, types)
 
             if result.command.command != 0:
                 cmd = result.command
                 if cmd.command == 10:
                     req_skips = int(cmd.i_value)
                 elif cmd.command == 11:
-                    to_return = ExecutionResult(result.result, result.variables, Command(0))
+                    to_return = ExecutionResult(result.result, result.variables, types, Command(0))
                     break
 
             current_line_index += 1
@@ -69,19 +77,19 @@ class Parser:
     def reader(self) -> None: return None
 
     @classmethod
-    def call_function(cls, function: Function, args: LineList, current_context: Variables, line_index: int, code: LineList) -> ExecutionResult:
+    def call_function(cls, function: Function, args: LineList, current_context: Variables, line_index: int, code: LineList, types: TypeContext) -> ExecutionResult:
         context = Variables(current_context.number+1)
         for i in range(args.length):
             arg_name = function.req_args.get_line(i)
             if CONFIG.debug and not CONFIG.only_return_results: print(f"New var in function: {arg_name}!")
-            arg_value = cls.execute_line(args.get_line(i), current_context, line_index, code).result
-            variable = Variable(arg_name, arg_value, Variable.get_type(arg_value))
+            arg_value = cls.execute_line(args.get_line(i), current_context, line_index, code, types).result
+            variable = Variable(arg_name, arg_value, Variable.get_type(arg_value, types))
             context.append(VariableObject(variable, VariableObjectType.Variable))
-        result = cls.__reader(function.body, context)
+        result = cls.__reader(function.body, context, types)
         return result
 
     @classmethod
-    def execute_line(cls, line: str, context: Variables, line_index: int, code: LineList, ignore_dot=False) -> ExecutionResult:
+    def execute_line(cls, line: str, context: Variables, line_index: int, code: LineList, types: TypeContext) -> ExecutionResult:
         v = line.split()
 
         result = ""
@@ -92,8 +100,8 @@ class Parser:
             if CONFIG.explain_mode:
                 print(explain)
 
-        def execute_here(line: str, ignore_dot=False) -> ExecutionResult:
-            return cls.execute_line(line, context, line_index, code, ignore_dot)
+        def execute_here(line: str) -> ExecutionResult:
+            return cls.execute_line(line, context, line_index, code, types)
 
         def arg_at_is(index: int, value: str, in_v: bool=True) -> bool:
             if index >= len(v) or index >= len(line): return False
@@ -102,10 +110,10 @@ class Parser:
             else:
                 return line[index] == value
 
-        if len(v) == 0: return ExecutionResult(result, context, Command(0))
-        elif v[0].startswith(Operators.Ignore.get()): return ExecutionResult(result, context, Command(0))
+        if len(v) == 0: return ExecutionResult(result, context, types, Command(0))
+        elif v[0].startswith(Operators.Ignore.get()): return ExecutionResult(result, context, types, Command(0))
 
-        if line.startswith(Operators.End.get()): return ExecutionResult(result, context, Command(10, code.length))
+        if line.startswith(Operators.End.get()): return ExecutionResult(result, context, types, Command(10, code.length))
 
         # Python operator
         if arg_at_is(0, Operators.Python.get(), False):
@@ -134,7 +142,7 @@ class Parser:
                 if not variable_obj.is_empty():
                     if variable:
                         value = variable.value
-                        if variable.type == VariableType.String:
+                        if variable.type_is(types.get("string")):
                             value = f"\"{value}\""
                         python_expression += f"{value}"
                     elif function:
@@ -151,7 +159,7 @@ class Parser:
                             counter += 1
                         req_skips = counter
                         key = "`".join(keys)
-                    if Variable.get_type(key) == VariableType.String: make_all_string = True
+                    if Variable.get_type_is(key, types.get("string"), types): make_all_string = True
                     python_expression += key
                 python_expression += " "
                 index += 1
@@ -159,10 +167,9 @@ class Parser:
             if make_all_string:
                 python_expression = ""
                 for key in data:
-                    key_type = Variable.get_type(key)
-                    if key_type == VariableType.String:
+                    if Variable.get_type_is(key, types.get("string"), types):
                         python_expression += key
-                    elif key_type == VariableType.Operator:
+                    elif Variable.get_type_is(key, types.get("operator"), types):
                         python_expression += key
                     else:
                         python_expression += f"\"{key}\""
@@ -179,16 +186,16 @@ class Parser:
             explain_code(f"В строке '{line}' интерпретатор выполняет операцию по отображению в любом случае '{line[4:]}'")
 
         elif arg_at_is(0, "if"):
-            condition_variable = Variable("condition", "", VariableType.Unknown)
+            condition_variable = Variable("condition", "", types.get("unknown"))
             arg = str(execute_here(line[3:]).result).lower()
-            condition_variable.edit_value(arg)
-            if condition_variable.type == VariableType.Boolean:
+            condition_variable.edit_value(arg, types)
+            if condition_variable.type_is(types.get("boolean")):
                 body = cls.get_body(line_index, code)
                 if not condition_variable.state:
                     command = 10
                     command_value = body.length
             else:
-                Parser.drop_exception(f"Condition can't be not boolean type! At {code.get_line(line_index)}")
+                NeonParser.drop_exception(f"Condition can't be not boolean type! At {code.get_line(line_index)}")
 
         # Variable add operation
         elif arg_at_is(0, "var"):
@@ -202,11 +209,11 @@ class Parser:
             value = execute_here(line[remove_count:]).result
 
             if can_add:
-                variable = Variable(v[1], value, Variable.get_type(str(value)))
+                variable = Variable(v[1], value, Variable.get_type(str(value), types))
                 context.append(VariableObject(variable, VariableObjectType.Variable))
                 explain_code(f"В строке '{line}' интерпретатор выполняет операцию по созданию переменной '{v[1]}' со значением {value}")
             else:
-                Parser.drop_exception(f"Missing '{Operators.Set.get()}' in variable assignation! At {code.get_line(line_index)}")
+                NeonParser.drop_exception(f"Missing '{Operators.Set.get()}' in variable assignation! At {code.get_line(line_index)}")
 
         # Function add operation
         elif arg_at_is(0, "function"):
@@ -239,6 +246,7 @@ class Parser:
         elif arg_at_is(0, "load"):
             path = line[5:]
             new_package = Package(path)
+            types.join(new_package.get_new_types())
             context.append(VariableObject(new_package, VariableObjectType.Package))
 
 
@@ -255,7 +263,7 @@ class Parser:
                 elif function:
                     if function.req_args.length == 0:
                         explain_code(f"В строке '{line}' интерпретатор выполняет операцию по вызову функции '{function.name}'")
-                        result = cls.call_function(function, LineList.empty(), context, line_index, code).result
+                        result = cls.call_function(function, LineList.empty(), context, line_index, code, types).result
             elif len(v) > 1:
                 if variable:
                     def get_values(op: str) -> (str, bool):
@@ -277,73 +285,73 @@ class Parser:
                         op = Operators.Set.get()
                         info = get_values(op)
 
-                        if Variable.get_type(info[0]) != variable.type:
-                            Parser.drop_exception(f"It is not possible to explicitly convert an {Variable.get_type(info[0]).name} type to a {variable.type.name}! At {code.get_line(line_index)}")
+                        if Variable.get_type(info[0], types) != variable.type:
+                            NeonParser.drop_exception(f"It is not possible to explicitly convert an {Variable.get_type(info[0], types).name} type to a {variable.type}! At {code.get_line(line_index)}")
                         if info[1]:
                             explain_code(f"В строке '{line}' интерпретатор выполняет математическую операцию '{variable.name} = {info[0]}'")
                             variable.value = info[0]
                         else:
-                            Parser.drop_exception(f"Missing '{op}' in variable set! At {code.get_line(line_index)}")
+                            NeonParser.drop_exception(f"Missing '{op}' in variable set! At {code.get_line(line_index)}")
                     elif Operators.AddApply.get() in line:
                         op = Operators.AddApply.get()
                         info = get_values(op)
 
                         if info[1]:
-                            if variable.is_digit:
+                            if variable.type_is(types.get("number")):
                                 variable.value = str(int(variable.value) + int(info[0]))
                             else:
                                 variable.value = variable.value[:-1] + info[0] + "\""
                             explain_code(f"В строке '{line}' интерпретатор выполняет математическую операцию '{variable.name}' + '{info[0]}' и задаёт полученное значение '{variable.name}'")
                         else:
-                            Parser.drop_exception(f"Missing '{op}' in variable add! At {code.get_line(line_index)}")
+                            NeonParser.drop_exception(f"Missing '{op}' in variable add! At {code.get_line(line_index)}")
                     elif Operators.DenyApply.get() in line:
                         op = Operators.DenyApply.get()
                         info = get_values(op)
 
                         if info[1]:
-                            if variable.is_digit:
+                            if variable.type_is(types.get("number")):
                                 variable.value = str(int(variable.value) - int(info[0]))
                                 explain_code(f"В строке '{line}' интерпретатор выполняет математическую операцию '{variable.name}' - '{info[0]}' и задаёт полученное значение '{variable.name}'")
                             else:
-                                Parser.drop_exception(f"You trying to take away from string! At {code.get_line(line_index)}")
+                                NeonParser.drop_exception(f"You trying to take away from string! At {code.get_line(line_index)}")
                         else:
-                            Parser.drop_exception(f"Missing '{op}' in variable add! At {code.get_line(line_index)}")
+                            NeonParser.drop_exception(f"Missing '{op}' in variable add! At {code.get_line(line_index)}")
                     elif Operators.MultiplyApply.get() in line:
                         op = Operators.MultiplyApply.get()
                         info = get_values(op)
 
                         if info[1]:
-                            if variable.is_digit:
+                            if variable.type_is(types.get("number")):
                                 variable.value = str(int(variable.value) * int(info[0]))
                                 explain_code(f"В строке '{line}' интерпретатор выполняет математическую операцию '{variable.name}' * '{info[0]}' и задаёт полученное значение '{variable.name}'")
                             else:
-                                Parser.drop_exception(f"You trying to multiply string! At {code.get_line(line_index)}")
+                                NeonParser.drop_exception(f"You trying to multiply string! At {code.get_line(line_index)}")
                         else:
-                            Parser.drop_exception(f"Missing '{op}' in variable add! At {code.get_line(line_index)}")
+                            NeonParser.drop_exception(f"Missing '{op}' in variable add! At {code.get_line(line_index)}")
                     elif Operators.DivideApply.get() in line:
                         op = Operators.DivideApply.get()
                         info = get_values(op)
 
                         if info[1]:
-                            if variable.is_digit:
+                            if variable.type_is(types.get("number")):
                                 variable.value = str(int(variable.value) / int(info[0]))
                                 explain_code(f"В строке '{line}' интерпретатор выполняет математическую операцию '{variable.name}' / '{info[0]}' и задаёт полученное значение '{variable.name}'")
                             else:
-                                Parser.drop_exception(f"You trying to divide string! At {code.get_line(line_index)}")
+                                NeonParser.drop_exception(f"You trying to divide string! At {code.get_line(line_index)}")
                         else:
-                            Parser.drop_exception(f"Missing '{op}' in variable add! At {code.get_line(line_index)}")
+                            NeonParser.drop_exception(f"Missing '{op}' in variable add! At {code.get_line(line_index)}")
                     elif Operators.SqrtApply.get() in line:
                         op = Operators.SqrtApply.get()
                         info = get_values(op)
 
                         if info[1]:
-                            if variable.is_digit:
+                            if variable.type_is(types.get("number")):
                                 variable.value = str(math.sqrt(int(variable.value)))
                                 explain_code(f"В строке '{line}' интерпретатор выполняет математическую операцию корень из '{variable.name}' и задаёт полученное значение '{variable.name}'")
                             else:
-                                Parser.drop_exception(f"You trying to apply sqrt to string! At {code.get_line(line_index)}")
+                                NeonParser.drop_exception(f"You trying to apply sqrt to string! At {code.get_line(line_index)}")
                         else:
-                            Parser.drop_exception(f"Missing '{op}' in variable add! At {code.get_line(line_index)}")
+                            NeonParser.drop_exception(f"Missing '{op}' in variable add! At {code.get_line(line_index)}")
 
 
                 elif function:
@@ -351,15 +359,15 @@ class Parser:
                     can_continue = v[1] == Operators.Move.get() or v[2].startswith(Operators.Move.get())
                     if v[1] == Operators.Move.get(): args = v[2]
                     if can_continue:
-                        result = cls.call_function(function, get_in(args), context, line_index, code).result
+                        result = cls.call_function(function, get_in(args), context, line_index, code, types).result
                         explain_code(f"В строке '{line}' интерпретатор выполняет операцию по вызову функции '{function.name}' с аргументами '{function.req_args.line_text}'")
-        elif Variable.get_type(line) == VariableType.String:
+        elif Variable.get_type_is(line, types.get("string"), types):
             result = tool.open_string(line)
         else:
-            packages_result = PackageResult(ExecutionResult("", context, Command(0)), False)
+            packages_result = PackageResult(ExecutionResult("", context, types, Command(0)), False)
             for package in context.get_packages():
                 package: Package
-                packages_result = package.invoke([cls, line, context, line_index, code])
+                packages_result = package.invoke([cls, line, context, line_index, code, types])
                 if packages_result.result: break
 
             if not packages_result.result:
@@ -371,7 +379,7 @@ class Parser:
                 command = packages_result.execution_result.command.command
                 command_value = packages_result.execution_result.command.s_value
 
-        execution_result = ExecutionResult(result, context, Command(command, command_value))
+        execution_result = ExecutionResult(result, context, types, Command(command, command_value))
         if CONFIG.debug or (CONFIG.debug and CONFIG.only_return_results): print(f"<execute_line> ({line_index}) context:{context.number} -> line={line} ; result={execution_result} ; \n     full context:\n{context.context}\n\n")
         return execution_result
 

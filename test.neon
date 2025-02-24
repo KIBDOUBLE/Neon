@@ -1,12 +1,5 @@
 load packages/dot
+load packages/numeric
 
-var a <- 1
-var b <- 2
-
-function c <- (a)
-    return 1
-end
-
-~print(context.context)
-~context.flush()
-~print(context.context)
+log numeric Hallo!
+log "123".length

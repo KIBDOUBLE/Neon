@@ -1,4 +1,4 @@
-import parser
+import neon_parser
 
 
 class Command:
@@ -8,16 +8,16 @@ class Command:
         self.__value__ = value
 
     def set_value(self, new_value, accessor):
-        if accessor is parser.Parser:
+        if accessor is parser.NeonParser:
             self.__value__ = new_value
         else:
-            parser.Parser.drop_exception("You trying to change value of command without required allowed accessor!")
+            parser.NeonParser.drop_exception("You trying to change value of command without required allowed accessor!")
 
     def set_command(self, new_command: int, accessor):
-        if accessor is parser.Parser:
+        if accessor is parser.NeonParser:
             self.__command__ = new_command
         else:
-            parser.Parser.drop_exception("You trying to change command without required allowed accessor!")
+            parser.NeonParser.drop_exception("You trying to change command without required allowed accessor!")
 
     @property
     def command(self) -> int: return self.__command__

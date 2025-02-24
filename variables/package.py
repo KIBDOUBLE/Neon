@@ -1,4 +1,5 @@
 from new_types.package_result import PackageResult
+from new_types.type_context import TypeContext
 
 
 class Package:
@@ -23,9 +24,17 @@ class Package:
         context = args[2]
         line_index = args[3]
         code = args[4]
+        types = args[5]
         namespace = {}
         exec(self.__body, namespace)
 
         if "get" in namespace:
-            result = namespace["get"](cls, line, context, line_index, code)
+            result = namespace["get"](cls, line, context, line_index, code, types)
             return result
+
+    def get_new_types(self) -> TypeContext:
+        namespace = {}
+        exec(self.__body, namespace)
+
+        if "types" in namespace:
+            return namespace["types"]()

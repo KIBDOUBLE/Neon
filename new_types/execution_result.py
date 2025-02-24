@@ -1,13 +1,15 @@
 from new_types.command import Command
+from new_types.type_context import TypeContext
 from variables.variables import Variables
 
 
 class ExecutionResult:
-    slots = ["__result", "__variables", "__reader_command"]
-    def __init__(self, result: str, edited_variables: Variables, reader_command: Command):
+    slots = ["__result", "__variables", "__types", "__reader_command"]
+    def __init__(self, result: str, edited_variables: Variables, edited_types: TypeContext, reader_command: Command):
         self.__result = result
         self.__variables = edited_variables
         self.__reader_command = reader_command
+        self.__types = edited_types
 
     def contains_result(self) -> bool: return (self.__result != "") and (not self.__result is None)
 
@@ -19,6 +21,9 @@ class ExecutionResult:
 
     @property
     def variables(self) -> Variables: return self.__variables
+
+    @property
+    def types(self) -> TypeContext: return self.__types
 
     @staticmethod
     def is_execution_result(string: str) -> bool: return str(string).startswith("(result:") and ", CN" in str(string)
